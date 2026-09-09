@@ -59,3 +59,5 @@ Convert Study Guide to File
 Upload to Google Drive
         ↓
 Save Processing Record
+
+![Workflow](screenshots/workflow.png)
