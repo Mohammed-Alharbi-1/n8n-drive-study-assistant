@@ -1,0 +1,556 @@
+{
+  "name": "n8n-drive-study-assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "YOUR_INPUT_FOLDER_ID",
+          "mode": "id"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "name": "Google Drive - New Study File"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "file_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "name": "file_name",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            },
+            {
+              "name": "mime_type",
+              "value": "={{ $json.mimeType }}",
+              "type": "string"
+            },
+            {
+              "name": "input_folder_id",
+              "value": "YOUR_INPUT_FOLDER_ID",
+              "type": "string"
+            },
+            {
+              "name": "output_folder_id",
+              "value": "YOUR_OUTPUT_FOLDER_ID",
+              "type": "string"
+            },
+            {
+              "name": "original_extension",
+              "value": "={{ $json.name.split('.').pop().toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "name": "base_name",
+              "value": "={{ $json.name.replace(/\\.[^/.]+$/, '') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        208,
+        0
+      ],
+      "name": "Normalize File Metadata"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.mime_type }}",
+              "rightValue": "application/pdf",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        432,
+        0
+      ],
+      "name": "Is Supported PDF?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        656,
+        96
+      ],
+      "name": "Unsupported File"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*)::int AS processed_count\nFROM processed_files\nWHERE file_id = $1;",
+        "options": {
+          "queryReplacement": "={{ $('Normalize File Metadata').item.json.file_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        656,
+        -96
+      ],
+      "name": "Check Already Processed"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ Number($json.processed_count) }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        880,
+        -96
+      ],
+      "name": "Is New File?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        0
+      ],
+      "name": "Skip Duplicate"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Normalize File Metadata').item.json.file_id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1104,
+        -192
+      ],
+      "name": "Download Study PDF"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        1328,
+        -192
+      ],
+      "name": "Extract PDF Text"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawText =\n  $json.text ??\n  $json.data ??\n  '';\n\nconst cleanedText = String(rawText)\n  .replace(/\\u0000/g, '')\n  .replace(/\\r/g, '')\n  .replace(/[ \\t]+/g, ' ')\n  .replace(/\\n{3,}/g, '\\n\\n')\n  .trim();\n\nif (!cleanedText || cleanedText.length < 100) {\n  throw new Error(\n    'The PDF does not contain enough extractable text. It may be scanned or empty.'\n  );\n}\n\nreturn [\n  {\n    json: {\n      file_id: $('Normalize File Metadata').item.json.file_id,\n      file_name: $('Normalize File Metadata').item.json.file_name,\n      base_name: $('Normalize File Metadata').item.json.base_name,\n      mime_type: $('Normalize File Metadata').item.json.mime_type,\n      output_folder_id: $('Normalize File Metadata').item.json.output_folder_id,\n\n      text: cleanedText,\n\n      text_length: cleanedText.length\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1552,
+        -192
+      ],
+      "name": "Clean Extracted Text"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-5-mini",
+          "mode": "list"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an expert academic study assistant.\n\nYour job is to transform educational material into a structured study guide.\n\nYou must only use information contained in the provided document.\n\nDo not invent facts.\n\nReturn ONLY valid JSON.\n\nThe output must follow exactly this structure:\n\n{\n  \"title\": \"string\",\n  \"summary\": \"string\",\n  \"key_points\": [\n    \"string\"\n  ],\n  \"questions\": [\n    {\n      \"question\": \"string\",\n      \"answer\": \"string\"\n    }\n  ],\n  \"flashcards\": [\n    {\n      \"front\": \"string\",\n      \"back\": \"string\"\n    }\n  ]\n}\n\nRequirements:\n\n- Write a clear but detailed summary.\n- Extract 8 to 15 key points.\n- Generate 15 useful study questions and answers.\n- Generate 15 flashcards.\n- Questions should cover understanding, not only memorization.\n- Keep answers concise and accurate.\n- Preserve important terminology from the document.\n- Do not include Markdown around the JSON.\n- Do not include ```json.\n- Do not include any text outside the JSON object."
+            },
+            {
+              "content": "=={{\n`FILE NAME:\n${$json.file_name}\n\nDOCUMENT CONTENT:\n\n${$json.text}`\n}}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1760,
+        -192
+      ],
+      "name": "Message a model"
+    },
+    {
+      "parameters": {
+        "jsCode": "let raw =\n  $json.output?.[0]?.content?.[0]?.text ??\n  $json.output_text ??\n  $json.text ??\n  $json.content?.[0]?.text ??\n  '';\n\nif (typeof raw !== 'string') {\n  raw = JSON.stringify(raw);\n}\n\nraw = raw.trim();\n\n// Remove possible Markdown code blocks\nraw = raw\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/\\s*```$/i, '')\n  .trim();\n\nlet parsed;\n\ntry {\n  parsed = JSON.parse(raw);\n} catch (error) {\n  throw new Error(\n    `AI returned invalid JSON: ${error.message}\\n\\nRaw response:\\n${raw.slice(0, 1500)}`\n  );\n}\n\n// Validate required fields\nif (!parsed.title) {\n  throw new Error('AI response is missing \"title\".');\n}\n\nif (!parsed.summary) {\n  throw new Error('AI response is missing \"summary\".');\n}\n\nif (!Array.isArray(parsed.key_points)) {\n  parsed.key_points = [];\n}\n\nif (!Array.isArray(parsed.questions)) {\n  parsed.questions = [];\n}\n\nif (!Array.isArray(parsed.flashcards)) {\n  parsed.flashcards = [];\n}\n\nreturn [\n  {\n    json: {\n      ...parsed,\n\n      file_id: $('Normalize File Metadata').item.json.file_id,\n      file_name: $('Normalize File Metadata').item.json.file_name,\n      base_name: $('Normalize File Metadata').item.json.base_name,\n      mime_type: $('Normalize File Metadata').item.json.mime_type,\n      output_folder_id: $('Normalize File Metadata').item.json.output_folder_id\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        -192
+      ],
+      "name": "Parse Study Analysis"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $json;\n\nlet markdown = '';\n\nmarkdown += `# ${data.title || data.base_name}\\n\\n`;\n\nmarkdown += `## Document\\n\\n`;\n\nmarkdown += `Original file: ${data.file_name}\\n\\n`;\n\nmarkdown += `---\\n\\n`;\n\nmarkdown += `# Summary\\n\\n`;\n\nmarkdown += `${data.summary}\\n\\n`;\n\nmarkdown += `---\\n\\n`;\n\nmarkdown += `# Key Points\\n\\n`;\n\nfor (const point of data.key_points || []) {\n  markdown += `- ${point}\\n`;\n}\n\nmarkdown += `\\n---\\n\\n`;\n\nmarkdown += `# Questions & Answers\\n\\n`;\n\n(data.questions || []).forEach((item, index) => {\n\n  markdown += `## Question ${index + 1}\\n\\n`;\n\n  markdown += `**Q:** ${item.question}\\n\\n`;\n\n  markdown += `**A:** ${item.answer}\\n\\n`;\n\n});\n\nmarkdown += `---\\n\\n`;\n\nmarkdown += `# Flashcards\\n\\n`;\n\n(data.flashcards || []).forEach((card, index) => {\n\n  markdown += `## Card ${index + 1}\\n\\n`;\n\n  markdown += `**Front:** ${card.front}\\n\\n`;\n\n  markdown += `**Back:** ${card.back}\\n\\n`;\n\n});\n\nmarkdown += `---\\n\\n`;\n\nmarkdown += `Generated automatically by n8n Drive Study Assistant.\\n`;\n\nreturn [\n  {\n    json: {\n      ...data,\n\n      output_file_name:\n        `${data.base_name}_Study_Guide.md`,\n\n      study_guide: markdown\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2352,
+        -192
+      ],
+      "name": "Build Study Guide"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "study_guide",
+        "options": {
+          "fileName": "={{ $json.output_file_name }}"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        2576,
+        -192
+      ],
+      "name": "Create Study Guide File"
+    },
+    {
+      "parameters": {
+        "name": "={{ $('Build Study Guide').item.json.output_file_name }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_OUTPUT_FOLDER_ID"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2800,
+        -192
+      ],
+      "name": "Upload Study Guide"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO processed_files (\n    file_id,\n    file_name,\n    mime_type,\n    output_file_id\n)\nVALUES (\n    $1,\n    $2,\n    $3,\n    $4\n)\nON CONFLICT (file_id)\nDO NOTHING;",
+        "options": {
+          "queryReplacement": "=$1={{ $('Normalize File Metadata').item.json.file_id }} $2={{ $('Normalize File Metadata').item.json.file_name }} $3={{ $('Normalize File Metadata').item.json.mime_type }} $4={{ $('Upload Study Guide').item.json.id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        3024,
+        -192
+      ],
+      "name": "Mark File As Processed"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "name": "original_file",
+              "value": "={{ $('Normalize File Metadata').item.json.file_name }}",
+              "type": "string"
+            },
+            {
+              "name": "generated_file",
+              "value": "={{ $('Build Study Guide').item.json.output_file_name }}",
+              "type": "string"
+            },
+            {
+              "name": "original_file_id",
+              "value": "={{ $('Normalize File Metadata').item.json.file_id }}",
+              "type": "string"
+            },
+            {
+              "name": "output_file_id",
+              "value": "={{ $('Upload Study Guide').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "name": "processed_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        3248,
+        -192
+      ],
+      "name": "Processing Complete"
+    }
+  ],
+  "connections": {
+    "Google Drive - New Study File": {
+      "main": [
+        [
+          {
+            "node": "Normalize File Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize File Metadata": {
+      "main": [
+        [
+          {
+            "node": "Is Supported PDF?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Supported PDF?": {
+      "main": [
+        [
+          {
+            "node": "Check Already Processed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unsupported File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Already Processed": {
+      "main": [
+        [
+          {
+            "node": "Is New File?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is New File?": {
+      "main": [
+        [
+          {
+            "node": "Download Study PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Study PDF": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Text": {
+      "main": [
+        [
+          {
+            "node": "Clean Extracted Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Extracted Text": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Parse Study Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Study Analysis": {
+      "main": [
+        [
+          {
+            "node": "Build Study Guide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Study Guide": {
+      "main": [
+        [
+          {
+            "node": "Create Study Guide File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Study Guide File": {
+      "main": [
+        [
+          {
+            "node": "Upload Study Guide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Study Guide": {
+      "main": [
+        [
+          {
+            "node": "Mark File As Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark File As Processed": {
+      "main": [
+        [
+          {
+            "node": "Processing Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": []
+}
