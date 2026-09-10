@@ -65,25 +65,11 @@ Example PDF uploaded to the Input folder:
 
 ---
 
-### Example
+### Generated File
 
-![Example Result](Screenshots/example.png)
+The final Markdown file is uploaded automatically to the Google Drive Output folder.
 
----
-
-### Unsupported File Check
-
-If the uploaded file is not a supported PDF, the workflow stops processing it.
-
-![Unsupported File](Screenshots/unsupported-file.png)
-
----
-
-### Duplicate Check
-
-Before processing a PDF, the workflow checks the database to make sure the file was not processed before.
-
-![Duplicate Check](Screenshots/duplicate-check.png)
+![Generated File](Screenshots/result-file.png)
 
 ---
 
@@ -95,11 +81,11 @@ The workflow creates a structured study guide containing summaries, key points, 
 
 ---
 
-### Generated File
+### Unsupported File Check
 
-The final Markdown file is uploaded automatically to the Google Drive Output folder.
+If the uploaded file is not a supported PDF, the workflow stops processing it.
 
-![Generated File](Screenshots/result-file.png)
+![Unsupported File](Screenshots/unsupported-file.png)
 
 ---
 
@@ -208,6 +194,14 @@ CREATE TABLE IF NOT EXISTS processed_files (
 ```
 
 Each processed Google Drive file is stored using its unique file ID.
+
+---
+
+### Duplicate Check
+
+Before processing a PDF, the workflow checks the database to make sure the file was not processed before.
+
+![Duplicate Check](Screenshots/duplicate-check.png)
 
 ---
 
