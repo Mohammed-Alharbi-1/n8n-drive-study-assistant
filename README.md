@@ -45,7 +45,7 @@ It also prevents duplicate processing and ignores unsupported files.
 
 ### Workflow
 
-![Workflow](screenshots/workflow.png)
+![Workflow](Screenshots/workflow.png)
 
 ---
 
@@ -53,7 +53,7 @@ It also prevents duplicate processing and ignores unsupported files.
 
 The project uses separate `Input` and `Output` folders.
 
-![Google Drive Folders](screenshots/input-output.png)
+![Google Drive Folders](Screenshots/input-output.png)
 
 ---
 
@@ -61,13 +61,13 @@ The project uses separate `Input` and `Output` folders.
 
 Example PDF uploaded to the Input folder:
 
-![Input File](screenshots/input-file.png)
+![Input File](Screenshots/input-file.png)
 
 ---
 
 ### Example
 
-![Example Result](screenshots/example.png)
+![Example Result](Screenshots/example.png)
 
 ---
 
@@ -75,7 +75,7 @@ Example PDF uploaded to the Input folder:
 
 If the uploaded file is not a supported PDF, the workflow stops processing it.
 
-![Unsupported File](screenshots/unsupported-file.png)
+![Unsupported File](Screenshots/unsupported-file.png)
 
 ---
 
@@ -83,7 +83,7 @@ If the uploaded file is not a supported PDF, the workflow stops processing it.
 
 Before processing a PDF, the workflow checks the database to make sure the file was not processed before.
 
-![Duplicate Check](screenshots/duplicate-check.png)
+![Duplicate Check](Screenshots/duplicate-check.png)
 
 ---
 
@@ -91,7 +91,7 @@ Before processing a PDF, the workflow checks the database to make sure the file 
 
 The workflow creates a structured study guide containing summaries, key points, questions, answers, and flashcards.
 
-![Generated Study Guide](screenshots/result.png)
+![Generated Study Guide](Screenshots/result.png)
 
 ---
 
@@ -99,7 +99,7 @@ The workflow creates a structured study guide containing summaries, key points, 
 
 The final Markdown file is uploaded automatically to the Google Drive Output folder.
 
-![Generated File](screenshots/result-file.png)
+![Generated File](Screenshots/result-file.png)
 
 ---
 
