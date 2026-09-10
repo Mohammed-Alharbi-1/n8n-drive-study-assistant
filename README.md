@@ -89,6 +89,14 @@ If the uploaded file is not a supported PDF, the workflow stops processing it.
 
 ---
 
+### Duplicate Check
+
+Before processing a PDF, the workflow checks the database to make sure the file was not processed before.
+
+![Duplicate Check](Screenshots/duplicate-check.png)
+
+---
+
 ## Example AI output
 
 The AI returns structured data similar to:
@@ -194,14 +202,6 @@ CREATE TABLE IF NOT EXISTS processed_files (
 ```
 
 Each processed Google Drive file is stored using its unique file ID.
-
----
-
-### Duplicate Check
-
-Before processing a PDF, the workflow checks the database to make sure the file was not processed before.
-
-![Duplicate Check](Screenshots/duplicate-check.png)
 
 ---
 
