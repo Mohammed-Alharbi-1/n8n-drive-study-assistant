@@ -33,6 +33,8 @@ An automated study assistant built with n8n that monitors Google Drive, processe
 
 ## Workflow
 
+![Workflow](screenshots/workflow.png)
+
 ```text
 Google Drive Trigger
         ↓
@@ -59,5 +61,3 @@ Convert Study Guide to File
 Upload to Google Drive
         ↓
 Save Processing Record
-
-![Workflow](screenshots/workflow.png)
