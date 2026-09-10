@@ -33,7 +33,7 @@ An automated study assistant built with n8n that monitors Google Drive, processe
 
 ## Workflow
 
-![Workflow](screenshots/workflow.png)
+![Workflow](Screenshots/workflow.png)
 
 ```text
 Google Drive Trigger
