@@ -65,6 +65,12 @@ Example PDF uploaded to the Input folder:
 
 ---
 
+### Example
+
+![Example Result](screenshots/example.png)
+
+---
+
 ### Unsupported File Check
 
 If the uploaded file is not a supported PDF, the workflow stops processing it.
@@ -94,12 +100,6 @@ The workflow creates a structured study guide containing summaries, key points, 
 The final Markdown file is uploaded automatically to the Google Drive Output folder.
 
 ![Generated File](screenshots/result-file.png)
-
----
-
-### Example Result
-
-![Example Result](screenshots/example.png)
 
 ---
 
