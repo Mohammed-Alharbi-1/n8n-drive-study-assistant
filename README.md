@@ -1,4 +1,4 @@
-# n8n Drive Study Assistant
+# Drive Study Assistant
 
 An AI-powered study automation built with **n8n**, **Google Drive**, **OpenAI**, **Supabase**, and **PostgreSQL**.
 
